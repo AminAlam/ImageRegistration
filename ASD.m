@@ -1,8 +1,7 @@
-function ASD(img1,img2)
+function coeff = ASD(img1,img2)
 
-    boundaries1 = BoundaryDetector(img1);
-    
-    boundaries2 = BoundaryDetector(img2);
+    boundaries1 = BoundaryDetector(double(img1));
+    boundaries2 = BoundaryDetector(double(img2));
     
 %     for k=1:length(boundaries)
 %         b = boundaries{k};
