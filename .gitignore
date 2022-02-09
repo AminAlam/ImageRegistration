@@ -1,2 +1,7 @@
 report
 Project_Stuff
+*.png
+*.jpg
+*.nii
+*.pdf
+*.tex
