@@ -2,13 +2,10 @@ function SeperateVertebras = vertebra_seperator(V_label,alpha_1, beta_1, alpha_2
     Img = V_label;
     VertebraNumbers = 15:1:30;
     for i = VertebraNumbers
-        indexes = find(Img == i);
-        [x, y, z] = ind2sub(size(Img), indexes);
-        xyzPoints = [x, y, z]
-%         [row, col] = find(Img ~= 0);
+        [x, y, z] = ind2sub(size(Img), find(Img == i));
+        xyzPoints = [x, y, z];
         ptCloud = pointCloud(xyzPoints);
         if ~isempty(ptCloud.Location)
-            SeperateVertebras.(sprintf("Vertebra_%i", i)).indexes = indexes;
             SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud = ptCloud;
             SeperateVertebras.(sprintf("Vertebra_%i", i)).number = i;
             pc = PreRegister(ptCloud.Location,alpha_1, beta_1, alpha_2);
@@ -16,6 +13,6 @@ function SeperateVertebras = vertebra_seperator(V_label,alpha_1, beta_1, alpha_2
             SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud_rotated = ptCloud_rotated;
             Boundary = boundaryPC(ptCloud_rotated);
             SeperateVertebras.(sprintf("Vertebra_%i", i)).boundaryPointC = Boundary;
-            SeperateVertebras.(sprintf("Vertebra_%i", i)).sampledPC = pcdownsample(Boundary,'gridAverage',GridStep );
+            SeperateVertebras.(sprintf("Vertebra_%i", i)).sampledPC = pcdownsample(Boundary,'gridAverage',GridStep);
         end
     end
