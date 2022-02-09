@@ -1,16 +1,50 @@
-function pc2 = rotatePointCloudAlongZ(pc, direction)
+function pc2 = rotatePointCloudAlongZ(pc)
     direction = 'x';
     % Bring the point cloud center to the origin
-    
+    PcMean = mean(pc);
     pc = pc - mean(pc);
     
     % %%%This section align u normal vector along z-direction
     
     % Obtain the eigenvector of the highest eigenvalue
-    u = pcaEig(pc, 'max');
-       
+    u1 = pcaEig(pc, 'max');
+    u2 = pcaEig(pc, 'middle');
+    u3 = pcaEig(pc, 'min');
+    if abs(u1(3)) > 0.5
+    % istadeh
+    if u1(3) < 0
+        u1 = -1*(u1);
+    end
+else
+    % khabideh
+    if u1(2)<0
+        u1 = -1*(u1);
+    end
+end
+
+if abs(u2(1)) > 0.5
+     % khabideh
+     if u2(1)<0
+        u2 = -1*(u2);
+     end
+else
+     % istadeh
+     if u2(2)<0
+        u2 = -1*(u2);
+     end
+end
+
+if abs(u3(3)) > 0.5
+    if u3(3)<0
+        u3 = -1*(u3);
+    end
+else
+    if u3(1)<0
+        u3 = -1*(u3);
+    end
+end
     % Calculate the angles of the normal vector 
-    [alpha, beta] = unitVectorToAngle(u);
+    [alpha, beta] = unitVectorToAngle(u1);
     
     % Align the point cloud along x-axis followed by aligning along z-axis
     % YOU CAN REMOVE THE PI IF YOU WANT TO FLIP THE POINT CLOUD ALONG
@@ -19,26 +53,27 @@ function pc2 = rotatePointCloudAlongZ(pc, direction)
     pc2 = rotatePC(pc, Ry, Rz);
     
     % %%%This section align v normal vector along x or y direction
-    
+
     switch direction
         case 'x'
             offset = 0;
         case 'y'
             offset = pi/2;
     end
+
+    % Obtain the eigenvector of the 3nd highest eigenvalue 
     
-    % Obtain the eigenvector of the 2nd highest eigenvalue 
-    v = pcaEig(pc2, 'max');
-    
+
     % Calculate the angle of the projected v-vector along the xy-plane
     % with respect to the x-axis
-    [alpha, ~] = unitVectorToAngle(v);
-    
+    [alpha, ~] = unitVectorToAngle(u2);
+
     % Calculate the rotational matrix for the angle
     [~, Ry, Rz] = rotationalMatrix(offset - alpha, 0);
-    
+
     % Rotate the point cloud 
     pc2 = rotatePC(pc2, Ry, Rz);
+%     pc2 = pc2 + PcMean;
     
 end
 
@@ -52,17 +87,17 @@ end
 
 function u = pcaEig(pc, magnitude)
 
-    %% Obtain the covariance matrix
+    % Obtain the covariance matrix
     
     covariance = cov([pc(:, 1) pc(:, 2) pc(:, 3)]);
     
-    %% Calculate the eigenvectors and obtain the normal vector
+    % Calculate the eigenvectors and obtain the normal vector
     
     [V, D] = eig(covariance);
 
     diagonalEigenvalues = diag(D);
     
-    %% Output the normal vector 
+    % Output the normal vector 
     
     % Sort the eigenvectors based on size of eigenvalues 
     [~, I] = sort(diagonalEigenvalues);
