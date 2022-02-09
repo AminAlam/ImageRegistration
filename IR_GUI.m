@@ -262,6 +262,7 @@ classdef IR_GUI < matlab.apps.AppBase
                 JacobianMatofDisplacemnetField = JacobianMatCalc(DisplacemnetField);
                 catch
                     app.Status.Value = "there is a prolem with your python entrepretor. check it using pyenv command";
+                    JacobianMatofDisplacemnetField = 'Error';
                 end
                 ax = app.UIAxes4;
                 try 
@@ -400,6 +401,7 @@ classdef IR_GUI < matlab.apps.AppBase
                 JacobianMatofDisplacemnetField = JacobianMatCalc(DisplacemnetField);
                 catch
                     app.Status.Value = "there is a prolem with your python entrepretor. check it using pyenv command";
+                    JacobianMatofDisplacemnetField = 'Error';
                 end
                 
                 ax = app.UIAxes4;
@@ -624,6 +626,7 @@ classdef IR_GUI < matlab.apps.AppBase
                 JacobianMatofDisplacemnetField = JacobianMatCalc(DisplacemnetField);
                 catch
                     app.Status.Value = "there is a prolem with your python entrepretor. check it using pyenv command";
+                    JacobianMatofDisplacemnetField = 'Error';
                 end
                 
                 ax = app.UIAxes4;
