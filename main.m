@@ -1,8 +1,6 @@
 % Created and Developed by Amin Alam - 29th hun 2021
-
 clc
 clear
-
 % loading datas
 path = "./Project_Stuff/Datas/";
 i = 2;
