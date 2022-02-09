@@ -1,5 +1,23 @@
-function coeff = DS(img1,img2)
-
-    img1_bw = im2bw(img1);
-    img2_bw = im2bw(img2);
-    coeff = dice(img1_bw,img2_bw);
+function coeff = DS(SeperateVertebrasF,SeperateVertebrasA)
+    cp = 0;
+    pointP = 0;
+    pointA = 0;
+    fn1 = fieldnames(SeperateVertebrasF);
+    fn2 = fieldnames(SeperateVertebrasA);
+    for i = 15:1:30
+        name = "Vertebra_"+num2str(i);
+        if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
+            pointP = pointP + length(SeperateVertebrasF.(sprintf("Vertebra_%i", i)).pointCloud.Location);
+            pointA = pointA + length(SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated.Location);
+            cp = cp + (SeperateVertebrasF.(sprintf("Vertebra_%i", i)).CommonPointsWithAtlas);
+%             name
+%             disp('number of points P')
+%             length(SeperateVertebrasF.(sprintf("Vertebra_%i", i)).pointCloud.Location)
+%             disp('number of points A')
+%             length(SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated.Location)
+%             disp('number of points cp')
+%             length(SeperateVertebrasF.(sprintf("Vertebra_%i", i)).CommonPointsWithAtlas)
+        end
+    end
+coeff = cp/(pointA+pointP);
+    
