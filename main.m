@@ -3,8 +3,9 @@ clc
 clear
 close all
 % loading datas
-file_path = "./Project_Stuff/Datas/";
+
 SN = 18;
+file_path = "./Project_Stuff/Datas/";
 [V, V_label] = NiiLoader(SN,file_path);
 tool = imtool3D((V));
 setMask(tool,(V_label));
@@ -28,14 +29,42 @@ VA_label = double(niftiread(file_path+"00_mask.nii"));
 tool = imtool3D((VA));
 setMask(tool,(VA_label));
 ptCloud_A = Pcloudmaker(VA_label);
-ax = pcshow(ptCloud_A);
+pcshow(ptCloud_A);
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
 view(-46,60)
 colormap jet
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%% Registration - seperating each of vertebras and pre regeistration
+%% Registration just using CPD
+close all
+ptCloud_P = Pcloudmaker(V_label);
+ptCloud_A = Pcloudmaker(VA_label);
+% downsampling
+GridStep = 5;
+moving = pcdownsample(ptCloud_P,'gridAverage',GridStep);
+fixed = pcdownsample(ptCloud_A,'gridAverage',GridStep);
+tform = pcregistercpd(moving, fixed);
+movingReg = pctransform(moving, tform);
+
+figure
+pcshowpair(fixed, moving, 'MarkerSize',50)
+xlabel('X')
+ylabel('Y')
+zlabel('Z')
+legend({'Atlas','Subject'},'TextColor','w')
+view(-46,-10)
+saveas(gcf,"./report/images/Subject"+num2str(SN)+"Original.png")
+
+figure
+pcshowpair(fixed, movingReg, 'MarkerSize',50)
+xlabel('X')
+ylabel('Y')
+zlabel('Z')
+legend({'Atlas','Subject'},'TextColor','w')
+view(-46,-10)
+saveas(gcf,"./report/images/Subject"+num2str(SN)+"AfterJustCPD.png")
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%% seperating each of vertebras and Pre Regeistration
 close all
 GridStep = 5;
 ptCloud_P = Pcloudmaker(V_label);
@@ -48,7 +77,7 @@ ptCloud_A_R = pointCloud(PreRegister(ptCloud_A.Location,alpha_1_A, beta_1_A, alp
 tic
 SeperateVertebras = vertebra_seperator(V_label, alpha_1_P, beta_1_P, alpha_2_P, GridStep);
 SeperateVertebrasA = vertebra_seperator(VA_label, alpha_1_A, beta_1_A, alpha_2_A, GridStep);
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% caculating transform matrix
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% caculating transform matrixes
 fn1 = fieldnames(SeperateVertebras);
 fn2 = fieldnames(SeperateVertebrasA);
 clc
@@ -227,6 +256,9 @@ ASD_Score = ASD(SeperateVertebrasF.PCloud,ptCloud_A_transformed)
 %% intersection of vertebras
 clc
 V = VertebraIntersect_calc(SeperateVertebrasF,SeperateVertebrasA)
+%% jacobian of displacemnet field
+DisplacemnetField = registered_pointCloud.Location - ptCloud.Location;
+JacobianMatCalc(DisplacemnetField)
 %% registration using lsqcurvefit to tranformations
 clc
 fn1 = fieldnames(SeperateVertebras);
@@ -379,14 +411,43 @@ title('Point clouds after total fiting registration')
 
 %% registration using 2 feed forward networks with 10 layer
 clc
-DownSampled = pcdownsample(pointCloud(ptCloudAllPoints),'gridAverage',3);
+DownSampled = pcdownsample(pointCloud(ptCloudAllPoints),'gridAverage',7);
 [n,~] = size(DownSampled.Location)
-%
-coeef = 5;
-xyzP = interparc(coeef*n,xP,yP,zP,'spline');
-xyzR = interparc(coeef*n,xR,yR,zR,'spline');
+% interpolating each vertebra
+coeef = 0;
+xP = []; yP = []; zP = [];
+xR = []; yR  = []; zR = [];
+for i = 15:1:30
+    tic
+    name = "Vertebra_"+num2str(i);
+    if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
+        coeef = coeef+1;
+        beforeReg = SeperateVertebras.(sprintf("Vertebra_%i", i)).sampledPC;
+        afterReg = SeperateVertebras.(sprintf("Vertebra_%i", i)).movingReg;
+        locs_BR = beforeReg.Location;
+        locs_AR = afterReg.Location;
+        SampledPC_interpolated = interparc(n,locs_BR(:,1),locs_BR(:,2),locs_BR(:,3),'spline');
+        MovingReg_interpolated = interparc(n,locs_AR(:,1),locs_AR(:,2),locs_AR(:,3),'spline');
+        SeperateVertebras.(sprintf("Vertebra_%i", i)).sampledPC_interpolated = pointCloud(SampledPC_interpolated);
+        SeperateVertebras.(sprintf("Vertebra_%i", i)).movingReg_interpolated = pointCloud(MovingReg_interpolated);
+        
+        
+        xP = [xP ; SampledPC_interpolated(:,1)];
+        yP = [yP ; SampledPC_interpolated(:,2)];
+        zP = [zP ; SampledPC_interpolated(:,3)];
+        
+        xR = [xR ; MovingReg_interpolated(:,1)];
+        yR = [yR ; MovingReg_interpolated(:,2)];
+        zR = [zR ; MovingReg_interpolated(:,3)];
+    end
+    toc
+end
+%%
+xyzP = [xP, yP, zP];
+xyzR = [xR, yR, zR];
+
 % pcshowpair(pointCloud([xP,yP,zP]), pointCloud(xyz))
-pcshowpair(pointCloud(xyzP), pointCloud(ptCloudAllPoints))
+pcshowpair(pointCloud(ptCloudAllPoints), pointCloud(xyzP))
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
@@ -397,6 +458,7 @@ clc
 index = 1;
 x = [];
 t = [];
+
 for i=1:coeef
 x = [x, xyzP(i:coeef:end,index)];
 t = [t, xyzR(i:coeef:end,index)];
