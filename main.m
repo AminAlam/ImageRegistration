@@ -4,7 +4,7 @@ clear
 close all
 % loading datas
 file_path = "./Project_Stuff/Datas/";
-SN = 2;
+SN = 18;
 [V, V_label] = NiiLoader(SN,file_path);
 tool = imtool3D((V));
 setMask(tool,(V_label));
@@ -175,7 +175,7 @@ pcshowpair(ptCloud_A_transformed, pointCloud(locs_BR), 'MarkerSize',50)
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
-legend({'Atlas','Registered patient'},'TextColor','w')
+legend({'Atlas',' patient'},'TextColor','w')
 title('Point clouds before registration')
 
 figure
@@ -183,7 +183,7 @@ pcshowpair(ptCloud_A_transformed,  pointCloud(locs_AR), 'MarkerSize',50)
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
-legend({'Atlas','Registered patient'},'TextColor','w')
+legend({'Atlas','patient'},'TextColor','w')
 title('Point clouds after mohre to mohre registration')
 
 figure
@@ -191,7 +191,7 @@ pcshowpair(ptCloud_A_transformed,  pointCloud(ptCloudAllPoints), 'MarkerSize',50
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
-legend({'Atlas','Registered patient'},'TextColor','w')
+legend({'Atlas','patient'},'TextColor','w')
 title('Point clouds before polyval transformation')
 
 figure
@@ -199,9 +199,9 @@ pcshowpair(ptCloud_A_transformed, registered_pointCloud, 'MarkerSize',50)
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
-legend({'Atlas','Registered patient'},'TextColor','w')
-title('Point clouds after total fiting registration')
-%%
+legend({'Atlas','patient'},'TextColor','w')
+title('Point clouds after polyval transformation')
+%% cacluating common points of each vertebra with atals
 clc
 SeperateVertebrasF = Segmenter([xP_all_R, yP_all_R, zP_all_R],SeperateVertebras,SeperateVertebrasA);
 for i = 15:1:30
@@ -377,3 +377,88 @@ zlabel('Z')
 legend({'Atlas','Registered patient'},'TextColor','w')
 title('Point clouds after total fiting registration')
 
+%% registration using 2 feed forward networks with 10 layer
+clc
+DownSampled = pcdownsample(pointCloud(ptCloudAllPoints),'gridAverage',3);
+[n,~] = size(DownSampled.Location)
+%
+coeef = 5;
+xyzP = interparc(coeef*n,xP,yP,zP,'spline');
+xyzR = interparc(coeef*n,xR,yR,zR,'spline');
+% pcshowpair(pointCloud([xP,yP,zP]), pointCloud(xyz))
+pcshowpair(pointCloud(xyzP), pointCloud(ptCloudAllPoints))
+xlabel('X')
+ylabel('Y')
+zlabel('Z')
+legend({'main point cloud',' interpolated point cloud'},'TextColor','w')
+
+clc
+
+index = 1;
+x = [];
+t = [];
+for i=1:coeef
+x = [x, xyzP(i:coeef:end,index)];
+t = [t, xyzR(i:coeef:end,index)];
+end
+trainFcn = 'trainscg'; 
+hiddenLayerSize = 10;
+net = fitnet(hiddenLayerSize,trainFcn);
+
+net.divideParam.trainRatio = 100/100;
+net.divideParam.valRatio = 0/100;
+net.divideParam.testRatio = 0/100;
+
+[net,tr] = train(net,x,t);
+
+F_xR = net(DownSampled.Location(:,index));
+%
+index = 2;
+x = [];
+t = [];
+for i=1:coeef
+x = [x, xyzP(i:coeef:end,index)];
+t = [t, xyzR(i:coeef:end,index)];
+end
+
+trainFcn = 'trainscg'; 
+hiddenLayerSize = 10;
+net = fitnet(hiddenLayerSize,trainFcn);
+
+net.divideParam.trainRatio = 100/100;
+net.divideParam.valRatio = 0/100;
+net.divideParam.testRatio = 0/100;
+
+[net,tr] = train(net,x,t);
+
+F_yR = net(DownSampled.Location(:,index));
+%
+index = 3;
+x = [];
+t = [];
+for i=1:coeef
+x = [x, xyzP(i:coeef:end,index)];
+t = [t, xyzR(i:coeef:end,index)];
+end
+
+trainFcn = 'trainscg'; 
+hiddenLayerSize = 10;
+net = fitnet(hiddenLayerSize,trainFcn);
+
+net.divideParam.trainRatio = 100/100;
+net.divideParam.valRatio = 0/100;
+net.divideParam.testRatio = 0/100;
+
+[net,tr] = train(net,x,t);
+
+F_zR = net(DownSampled.Location(:,index));
+%
+figure
+pcshowpair(ptCloud_A_transformed, pointCloud([xP,yP,zP]))
+legend({'before registration','before registration'},'TextColor','w')
+figure
+pcshowpair(ptCloud_A_transformed, pointCloud([xR,yR,zR]))
+legend({'before registration','after mohre to mohre registration'},'TextColor','w')
+figure
+pcshowpair(ptCloud_A_transformed, pointCloud([F_xR,F_yR,F_zR]), 'MarkerSize',50)
+legend({'Atlas','after network registration'},'TextColor','w')
