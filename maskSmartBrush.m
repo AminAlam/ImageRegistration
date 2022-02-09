@@ -1,5 +1,6 @@
 classdef maskSmartBrush < maskPaintBrush
     
+    
     properties
         windowing = true;
     end

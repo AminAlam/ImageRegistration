@@ -1,5 +1,6 @@
 classdef imtool3DROI_ellipse < imtool3DROI_rect
     
+    
     properties (SetAccess = protected, GetAccess = protected)
         nPoints = 20;   %number of points to use to define the polygon that makes the elliptical mask 
     end

@@ -1,5 +1,6 @@
 classdef maskPaintBrush < handle
     
+    
     properties
         handles
         position                    %[x y radius]
