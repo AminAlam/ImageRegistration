@@ -1,3 +1,4 @@
+% this function makes pointcloud from Img
 function ptCloud=Pcloudmaker(Img)
 [x, y, z] = ind2sub(size(Img), find(Img ~=0));
 xyzPoints = [x, y, z];

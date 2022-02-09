@@ -1,3 +1,4 @@
+% a function for calculating Dice score
 function coeff = DS(SeperateVertebrasF,SeperateVertebrasA)
     cp = 0;
     pointP = 0;

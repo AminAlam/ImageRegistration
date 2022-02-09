@@ -1,3 +1,4 @@
+% this function returns boundary of a point cloud
 function PC_P = boundaryPC(pc)
     P = pc.Location;
     tri1 = boundary(P,1);

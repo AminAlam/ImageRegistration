@@ -1,3 +1,4 @@
+% this function calculates Average Surface Distance
 function coeff = ASD(pCloudP,pCloudA)
     P = boundaryPC(pCloudP).Location;
     A = boundaryPC(pCloudA).Location;
@@ -12,3 +13,4 @@ function coeff = ASD(pCloudP,pCloudA)
     
     dist = sum(dist);
     coeff = 2*dist/(length(P)+length(A));
+    

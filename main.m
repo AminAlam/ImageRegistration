@@ -39,12 +39,51 @@ colormap jet
 close all
 ptCloud_P = Pcloudmaker(V_label);
 ptCloud_A = Pcloudmaker(VA_label);
+
 % downsampling
 GridStep = 5;
 moving = pcdownsample(ptCloud_P,'gridAverage',GridStep);
 fixed = pcdownsample(ptCloud_A,'gridAverage',GridStep);
 tform = pcregistercpd(moving, fixed);
 movingReg = pctransform(moving, tform);
+
+
+% seperating vertebras
+Img = V_label;
+VertebraNumbers = 15:1:30;
+L = 0;
+for i = VertebraNumbers
+    [x, y, z] = ind2sub(size(Img), find(Img == i));
+    xyzPoints = [x, y, z];
+    ptCloud = pointCloud(xyzPoints);
+    
+    if ~isempty(ptCloud.Location)
+        SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud = pcdownsample(ptCloud,'gridAverage',GridStep);
+        L = L + length(SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud.Location);
+        SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud_rotated = SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud;
+        SeperateVertebras.(sprintf("Vertebra_%i", i)).number = i;
+    end
+end
+
+Img = VA_label;
+VertebraNumbers = 15:1:30;
+for i = VertebraNumbers
+    [x, y, z] = ind2sub(size(Img), find(Img == i));
+    xyzPoints = [x, y, z];
+    ptCloud = pointCloud(xyzPoints);
+    
+    if ~isempty(ptCloud.Location)
+        SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated = pcdownsample(ptCloud,'gridAverage',GridStep);;
+        SeperateVertebrasA.(sprintf("Vertebra_%i", i)).number = i;
+    end
+end
+registered_pointCloud = movingReg;
+Locations = movingReg.Location;
+Locations = interparc(L,Locations(:,1),Locations(:,2),Locations(:,3),'spline');
+movingReg = pointCloud(Locations);
+SeperateVertebrasF = Segmenter(movingReg.Location, SeperateVertebras, SeperateVertebrasA);
+ptCloud_A_transformed = pcdownsample(ptCloud_A,'gridAverage',GridStep);
+ptCloud = pcdownsample(ptCloud_P,'gridAverage',GridStep);
 
 figure
 pcshowpair(fixed, moving, 'MarkerSize',50)
@@ -53,7 +92,7 @@ ylabel('Y')
 zlabel('Z')
 legend({'Atlas','Subject'},'TextColor','w')
 view(-46,-10)
-saveas(gcf,"./report/images/Subject"+num2str(SN)+"Original.png")
+% saveas(gcf,"./report/images/Subject"+num2str(SN)+"Original.png")
 
 figure
 pcshowpair(fixed, movingReg, 'MarkerSize',50)
@@ -62,7 +101,7 @@ ylabel('Y')
 zlabel('Z')
 legend({'Atlas','Subject'},'TextColor','w')
 view(-46,-10)
-saveas(gcf,"./report/images/Subject"+num2str(SN)+"AfterJustCPD.png")
+% saveas(gcf,"./report/images/Subject"+num2str(SN)+"AfterJustCPD.png")
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%% seperating each of vertebras and Pre Regeistration
 close all
@@ -74,7 +113,6 @@ ptCloud_A = Pcloudmaker(VA_label);
 ptCloud_P_R = pointCloud(PreRegister(ptCloud_P.Location,alpha_1_P, beta_1_P, alpha_2_P));
 ptCloud_A_R = pointCloud(PreRegister(ptCloud_A.Location,alpha_1_A, beta_1_A, alpha_2_A));
 
-tic
 SeperateVertebras = vertebra_seperator(V_label, alpha_1_P, beta_1_P, alpha_2_P, GridStep);
 SeperateVertebrasA = vertebra_seperator(VA_label, alpha_1_A, beta_1_A, alpha_2_A, GridStep);
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% caculating transform matrixes
@@ -90,27 +128,15 @@ for i = 15:1:30
         SeperateVertebras.(sprintf("Vertebra_%i", i)).tform = tform;
         movingReg = pctransform(moving, tform);
         SeperateVertebras.(sprintf("Vertebra_%i", i)).movingReg = movingReg;
-%         % ploting all the mohres
-%         figure
-%         pcshowpair(SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated, ptCloud_A_R)
-%         legend({'Atlas Mohre','Atlas'},'TextColor','w')
-%         figure
-%         pcshowpair(fixed, moving)
-%         legend({'Atlas','patient'},'TextColor','w')
-%         title(name)
-%         figure
-%         pcshowpair(fixed, movingReg)
-%         legend({'Atlas','Registered patient'},'TextColor','w')
-%         title(name)
-        % determining common points in two pointcloud
+
         LocsA_R = fixed.Location;
         LocsP_R = movingReg.Location;
         cp = CommonPoints(LocsA_R, LocsP_R);
         SeperateVertebras.(sprintf("Vertebra_%i", i)).CommonPointsWithAtlas = cp;
     end
 end
-toc
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% showing registered point clouds
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% showing vertebra to vertebra registered point clouds
 
 LocsP = [];
 LocsP_R = [];
@@ -199,6 +225,8 @@ xP_all_R = polyval(fitobject_x,xP_all); yP_all_R = polyval(fitobject_y,yP_all); 
 registered_pointCloud = pointCloud([xP_all_R, yP_all_R, zP_all_R]);
 ptCloud_A_transformed = pointCloud(ptCloudAllPointsA);
 
+SeperateVertebrasF = Segmenter([xP_all_R, yP_all_R, zP_all_R],SeperateVertebras,SeperateVertebrasA);
+
 figure
 pcshowpair(ptCloud_A_transformed, pointCloud(locs_BR), 'MarkerSize',50)
 xlabel('X')
@@ -230,35 +258,6 @@ ylabel('Y')
 zlabel('Z')
 legend({'Atlas','patient'},'TextColor','w')
 title('Point clouds after polyval transformation')
-%% cacluating common points of each vertebra with atals
-clc
-SeperateVertebrasF = Segmenter([xP_all_R, yP_all_R, zP_all_R],SeperateVertebras,SeperateVertebrasA);
-for i = 15:1:30
-        name = "Vertebra_"+num2str(i);
-        if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
-            moving = SeperateVertebrasF.(sprintf("Vertebra_%i", i)).pointCloud;
-            fixed = SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated;
-            LocsA_R = fixed.Location;
-            LocsP_R = moving.Location;
-            cp = CommonPoints(LocsA_R, LocsP_R);
-            SeperateVertebrasF.(sprintf("Vertebra_%i", i)).CommonPointsWithAtlas = cp;
-        end
-end
-%% Dice score
-clc
-DiceScore = DS(SeperateVertebrasF,SeperateVertebrasA)
-%% Hausdorff Distance
-clc
-HausdorffScore = HD(SeperateVertebrasF,SeperateVertebrasA)
-%% Average Surface Distance
-clc
-ASD_Score = ASD(SeperateVertebrasF.PCloud,ptCloud_A_transformed)
-%% intersection of vertebras
-clc
-V = VertebraIntersect_calc(SeperateVertebrasF,SeperateVertebrasA)
-%% jacobian of displacemnet field
-DisplacemnetField = registered_pointCloud.Location - ptCloud.Location;
-JacobianMatCalc(DisplacemnetField)
 %% registration using lsqcurvefit to tranformations
 clc
 fn1 = fieldnames(SeperateVertebras);
@@ -410,15 +409,32 @@ legend({'Atlas','Registered patient'},'TextColor','w')
 title('Point clouds after total fiting registration')
 
 %% registration using 2 feed forward networks with 10 layer
+
+ptCloudAllPoints = [];
+ptCloudAllPointsA = [];
+for i = 15:1:30
+    name = "Vertebra_"+num2str(i);
+    if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
+        PtCloud = SeperateVertebras.(sprintf("Vertebra_%i", i)).ptCloud_rotated;
+        ptCloudAllPoints = [ptCloudAllPoints; PtCloud.Location];
+       
+        PtCloudA = SeperateVertebrasA.(sprintf("Vertebra_%i", i)).sampledPC;
+        ptCloudAllPointsA = [ptCloudAllPointsA; PtCloudA.Location];
+    end
+end
+
+ptCloud_A_transformed = pointCloud(ptCloudAllPointsA);
+
 clc
 DownSampled = pcdownsample(pointCloud(ptCloudAllPoints),'gridAverage',7);
-[n,~] = size(DownSampled.Location)
+ptCloud =  DownSampled;
+[n,~] = size(DownSampled.Location);
 % interpolating each vertebra
 coeef = 0;
 xP = []; yP = []; zP = [];
 xR = []; yR  = []; zR = [];
 for i = 15:1:30
-    tic
+    
     name = "Vertebra_"+num2str(i);
     if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
         coeef = coeef+1;
@@ -431,7 +447,7 @@ for i = 15:1:30
         SeperateVertebras.(sprintf("Vertebra_%i", i)).sampledPC_interpolated = pointCloud(SampledPC_interpolated);
         SeperateVertebras.(sprintf("Vertebra_%i", i)).movingReg_interpolated = pointCloud(MovingReg_interpolated);
         
-        
+        SeperateVertebrasF.(sprintf("Vertebra_%i", i)).pointCloud = pointCloud(MovingReg_interpolated); 
         xP = [xP ; SampledPC_interpolated(:,1)];
         yP = [yP ; SampledPC_interpolated(:,2)];
         zP = [zP ; SampledPC_interpolated(:,3)];
@@ -440,9 +456,10 @@ for i = 15:1:30
         yR = [yR ; MovingReg_interpolated(:,2)];
         zR = [zR ; MovingReg_interpolated(:,3)];
     end
-    toc
+    
 end
-%%
+
+%
 xyzP = [xP, yP, zP];
 xyzR = [xR, yR, zR];
 
@@ -514,7 +531,10 @@ net.divideParam.testRatio = 0/100;
 [net,tr] = train(net,x,t);
 
 F_zR = net(DownSampled.Location(:,index));
-%
+
+SeperateVertebrasF.PCloud = pointCloud([F_xR,F_yR,F_zR]);
+registered_pointCloud = SeperateVertebrasF.PCloud;
+
 figure
 pcshowpair(ptCloud_A_transformed, pointCloud([xP,yP,zP]))
 legend({'before registration','before registration'},'TextColor','w')
@@ -524,3 +544,35 @@ legend({'before registration','after mohre to mohre registration'},'TextColor','
 figure
 pcshowpair(ptCloud_A_transformed, pointCloud([F_xR,F_yR,F_zR]), 'MarkerSize',50)
 legend({'Atlas','after network registration'},'TextColor','w')
+
+%% cacluating common points of each vertebra with atals
+clc
+fn1 = fieldnames(SeperateVertebras);
+fn2 = fieldnames(SeperateVertebrasA);
+for i = 15:1:30
+        name = "Vertebra_"+num2str(i);
+        if sum(ismember(fn1,name)) && sum(ismember(fn2,name))
+            moving = SeperateVertebrasF.(sprintf("Vertebra_%i", i)).pointCloud;
+            fixed = SeperateVertebrasA.(sprintf("Vertebra_%i", i)).ptCloud_rotated;
+            LocsA_R = fixed.Location;
+            LocsP_R = moving.Location;
+            cp = CommonPoints(LocsA_R, LocsP_R);
+            SeperateVertebrasF.(sprintf("Vertebra_%i", i)).CommonPointsWithAtlas = cp;
+        end
+end
+%% Dice score
+clc
+DiceScore = DS(SeperateVertebrasF,SeperateVertebrasA)
+%% Hausdorff Distance
+
+HausdorffScore = HD(SeperateVertebrasF,SeperateVertebrasA)
+%% Average Surface Distance
+
+ASD_Score = ASD(SeperateVertebrasF.PCloud, ptCloud_A_transformed)
+%% intersection of vertebras
+
+VertebraIntersectsVolume = VertebraIntersect_calc(SeperateVertebrasF,SeperateVertebrasA)
+%% jacobian of displacemnet field
+
+DisplacemnetField = registered_pointCloud.Location - ptCloud.Location;
+JacobianMatofDisplacemnetField = JacobianMatCalc(DisplacemnetField)

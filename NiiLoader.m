@@ -1,3 +1,4 @@
+% this function loads .nii files
 function [V, V_label] = NiiLoader(i,path)
 
 if i<10

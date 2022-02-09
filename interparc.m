@@ -1,3 +1,4 @@
+% this function interpolates new points at any fractional points
 function [pt,dudt,fofthandle] = interparc(t,px,py,varargin)
 % interparc: interpolate points along a curve in 2 or more dimensions
 % usage: pt = interparc(t,px,py)    % a 2-d curve

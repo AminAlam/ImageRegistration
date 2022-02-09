@@ -1,3 +1,5 @@
+% this function calculates ration of nonpositive elements of jacobian
+% matrix of displacmentf field to number of all elements
 function out = JacobianMatCalc(DisplacemnetField)
     save DisplacemnetField.mat DisplacemnetField
     pythonFunction = py.importlib.import_module('jacobian_determinant');

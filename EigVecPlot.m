@@ -1,6 +1,8 @@
+% a function for ploting eigne vectors of a point cloud
+
 function EigVecPlot(ptCloud)
 
-% a function for ploting eigne vectors of a point cloud
+
 
 u1 = pcaEig(ptCloud.Location, 'max');
 u2 = pcaEig(ptCloud.Location, 'middle');

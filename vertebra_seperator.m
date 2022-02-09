@@ -1,3 +1,4 @@
+% a function for seperating vertebras from spinal cord
 function SeperateVertebras = vertebra_seperator(V_label,alpha_1, beta_1, alpha_2, GridStep)
     Img = V_label;
     VertebraNumbers = 15:1:30;
